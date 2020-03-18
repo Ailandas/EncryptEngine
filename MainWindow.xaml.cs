@@ -20,7 +20,6 @@ namespace EncryptEngine
             InitializeComponent();
             txtKey.MaxLength = 16;
         }
-        private static ManualResetEvent mre = new ManualResetEvent(false);
         Thread ProgressBaras1;
         Thread EstimatedTime1;
         Thread EncriptionThread1;
@@ -28,50 +27,79 @@ namespace EncryptEngine
         Thread EstimatedTime2;
         Thread DecriptionThread2;
         bool encipher;
+        CancellationTokenSource cancellationTokenSource=new CancellationTokenSource( );
+        public delegate bool IsPaused();
+        public bool Paused = false;
         private void btnCipher_Click(object sender, RoutedEventArgs e)
         {
+      
+
             if(txtKey.Text!="" && txtKey.Text.Length > 15)
             {
                 if(txtPath.Text!="")
                 {
-                    string path = txtPath.Text;
-                    string key = txtKey.Text;
-                    string Backup = @"BackUp";
-                    ProgressBar1.Value = 0;
-                    BackEnd.Cryptor.ThirdOfTime = 0;
-                    ProgressBar1.Maximum = 100;
-
-                    btnCipher.IsEnabled = false;
-                    btnDecipher.IsEnabled = false;
-                    btnSelectFolder.IsEnabled = false;
-
-                    btnCancel.IsEnabled = true;
-                    btnContinue.IsEnabled = false;
-                    btnStop.IsEnabled = true;
-                    encipher = true;
-
-                     ProgressBaras1 = new Thread(delegate ()
+                    if (Directory.Exists(txtPath.Text))
                     {
-                        ProgressBar(0,true);
+                        BackEnd.Cryptor.Cancel(); //Pasalina aplankalus senus pradedant
 
-                    });
-                    ProgressBaras1.Start();
+                        Paused = false;
+                        string path = txtPath.Text;
+                        string key = txtKey.Text;
+                        string Backup = @"BackUp";
+                        ProgressBar1.Value = 0;
+                        BackEnd.Cryptor.ThirdOfTime = 0;
+                        ProgressBar1.Maximum = 100;
 
-                     EstimatedTime1 = new Thread(delegate ()
+                        btnCipher.IsEnabled = false;
+                        btnDecipher.IsEnabled = false;
+                        btnSelectFolder.IsEnabled = false;
+
+                        btnCancel.IsEnabled = true;
+                        btnStopnPlay.IsEnabled = true;
+                        encipher = true;
+
+                        BackEnd.Cryptor.Execution = false;
+                        cancellationTokenSource.Dispose();
+                        cancellationTokenSource = new CancellationTokenSource();
+
+
+                        IsPaused DelegatePause = this.IsPausedMRE;
+
+                        ProgressBaras1 = new Thread(delegate ()
+                        {
+
+                            ProgressBar(true, cancellationTokenSource.Token, DelegatePause);
+
+                        });
+                        ProgressBaras1.IsBackground = true;
+                        ProgressBaras1.Start();
+
+                        EstimatedTime1 = new Thread(delegate ()
+                       {
+
+                           BackEnd.Cryptor.TimeMeasurment(path);
+                       });
+                        EstimatedTime1.IsBackground = true;
+                        EstimatedTime1.Start();
+
+
+                        EncriptionThread1 = new Thread(delegate ()
+                       {
+
+                           BackEnd.Cryptor.Execution = true;
+                           BackEnd.Cryptor.Encrypt(path, key, Backup, cancellationTokenSource.Token, DelegatePause);
+                           BackEnd.Cryptor.Execution = false;
+
+                       });
+                        EncriptionThread1.IsBackground = true;
+                        EncriptionThread1.Start();
+
+                    }
+                    else
                     {
-                        BackEnd.Cryptor.TimeMeasurment(path, "TempBackup");
-                    });
-                    EstimatedTime1.Start();
-                    
-
-                     EncriptionThread1 = new Thread(delegate ()
-                    {
-                        BackEnd.Cryptor.Encrypt(path, key, Backup);
-                    });
-                    EncriptionThread1.Start();
-                    
-            
-                   //System.Windows.MessageBox.Show("Sėkmingai užšifruota", "Sveikiname", MessageBoxButton.OK, MessageBoxImage.Information);
+                        System.Windows.MessageBox.Show("Tokia direktorija neegzistuoja", "Klaida", MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
+                   
                 }
                 else
                 {
@@ -83,7 +111,8 @@ namespace EncryptEngine
             {
                 System.Windows.MessageBox.Show("Raktas turi buti sudarytas is 16 simbolių", "klaida", MessageBoxButton.OK, MessageBoxImage.Information);
             }
-             
+            
+
 
         }
 
@@ -93,42 +122,63 @@ namespace EncryptEngine
             {
                 if (txtPath.Text != "" )
                 {
-                    string path = txtPath.Text;
-                    string key = txtKey.Text;
-                    ProgressBar1.Value = 0;
-                    BackEnd.Cryptor.HalfTime = 0;
-                    ProgressBar1.Maximum = 100;
-                    encipher = false;
-
-                    btnCipher.IsEnabled = false;
-                    btnDecipher.IsEnabled = false;
-                    btnSelectFolder.IsEnabled = false;
-
-                    btnCancel.IsEnabled = true;
-                    btnContinue.IsEnabled = false;
-                    btnStop.IsEnabled = true;
-
-
-                    ProgressBaras2 = new Thread(delegate ()
+                    if (Directory.Exists(txtPath.Text))
                     {
-                        ProgressBar(0,false);
+                        BackEnd.Cryptor.Cancel(); //Pasalina aplankalus senus pradedant
 
-                    });
-                    ProgressBaras2.Start();
-                    
-                     EstimatedTime2 = new Thread(delegate ()
-                    {
-                        BackEnd.Cryptor.TimeMeasurment(path, "TempBackupas");
-                    });
-                    EstimatedTime2.Start();
+                        Paused = false;
+                        string path = txtPath.Text;
+                        string key = txtKey.Text;
+                        ProgressBar1.Value = 0;
+                        BackEnd.Cryptor.HalfTime = 0;
+                        ProgressBar1.Maximum = 100;
+                        encipher = false;
 
-                     DecriptionThread2 = new Thread(delegate ()
+                        btnCipher.IsEnabled = false;
+                        btnDecipher.IsEnabled = false;
+                        btnSelectFolder.IsEnabled = false;
+
+                        btnCancel.IsEnabled = true;
+                        btnStopnPlay.IsEnabled = true;
+
+                        BackEnd.Cryptor.Execution = false;
+                        cancellationTokenSource.Dispose();
+                        cancellationTokenSource = new CancellationTokenSource();
+
+                        IsPaused DelegatePause = this.IsPausedMRE;
+
+                        ProgressBaras2 = new Thread(delegate ()
+                        {
+
+                            ProgressBar(false, cancellationTokenSource.Token, DelegatePause);
+
+                        });
+                        ProgressBaras2.IsBackground = true;
+
+                        ProgressBaras2.Start();
+
+                        EstimatedTime2 = new Thread(delegate ()
+                       {
+
+                           BackEnd.Cryptor.TimeMeasurment(path);
+                       });
+                        EstimatedTime2.IsBackground = true;
+                        EstimatedTime2.Start();
+
+                        DecriptionThread2 = new Thread(delegate ()
+                       {
+                           BackEnd.Cryptor.Execution = true;
+                           BackEnd.Cryptor.Decrypt(path, key, cancellationTokenSource.Token, DelegatePause);
+                           BackEnd.Cryptor.Execution = false;
+
+                       });
+                        DecriptionThread2.IsBackground = true;
+                        DecriptionThread2.Start();
+                    }
+                    else
                     {
-                        BackEnd.Cryptor.Decrypt(path, key);
-                    });
-                    DecriptionThread2.Start();
-                    
-                    //System.Windows.MessageBox.Show("Sėkmingai atšifruota", "Sveikiname", MessageBoxButton.OK, MessageBoxImage.Information);
+                        System.Windows.MessageBox.Show("Tokia direktorija neegzistuoja", "Klaida", MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
                 }
                 else
                 {
@@ -157,17 +207,24 @@ namespace EncryptEngine
                 
             }
         }
-        private void ProgressBar(double third,bool Encryption)
+        private void ProgressBar(bool Encryption,CancellationToken cancelToken,Delegate DelegatePause)
         {
 
             Stopwatch sw = new Stopwatch();
             bool cicle = true;
             sw.Reset();
-            while(cicle==true)
+            while(cicle==true && cancelToken.IsCancellationRequested!=true)
             {
+                bool wait = Convert.ToBoolean(DelegatePause.DynamicInvoke());
+                sw.Stop();
+                while (wait == true)
+                {
+                    wait = Convert.ToBoolean(DelegatePause.DynamicInvoke());
+                }
+                sw.Start();
                 if (Encryption == true)
                 {
-                    
+                   
                     sw.Start();
                     
                     if (BackEnd.Cryptor.ThirdOfTime == 0)
@@ -176,7 +233,7 @@ namespace EncryptEngine
                         {
                             if (ProgressBar1.Value < 30)
                             {
-                                ProgressBar1.Value = sw.ElapsedMilliseconds / 200;
+                                ProgressBar1.Value = sw.ElapsedMilliseconds;
                             }
 
                         });
@@ -187,20 +244,21 @@ namespace EncryptEngine
                          {
                              if (BackEnd.Cryptor.Execution == true)
                              {
-                                 ProgressBar1.Maximum = BackEnd.Cryptor.ThirdOfTime * 100;
-                                 ProgressBar1.Value = sw.ElapsedMilliseconds;
+                                 ProgressBar1.Maximum = BackEnd.Cryptor.ThirdOfTime;
+                                 ProgressBar1.Value = sw.ElapsedMilliseconds*8000;
                              }
                              else if (BackEnd.Cryptor.Execution == false)
                              {
-                                 ProgressBar1.Value = BackEnd.Cryptor.ThirdOfTime * 100;
+                                 ProgressBar1.Value = BackEnd.Cryptor.ThirdOfTime;
                                  btnCipher.IsEnabled = true;
                                  btnDecipher.IsEnabled = true;
                                  btnSelectFolder.IsEnabled = true;
-                                 btnStop.IsEnabled = false;
+                                 btnStopnPlay.IsEnabled = false;
                                  btnCancel.IsEnabled = false;
-                                 btnContinue.IsEnabled = false;
                                  cicle = false;
+
                                  sw.Stop();
+                                 
                              }
 
                          }
@@ -219,7 +277,7 @@ namespace EncryptEngine
                             {
                                 if (ProgressBar1.Value < 30)
                                 {
-                                    ProgressBar1.Value = sw.ElapsedMilliseconds / 200;
+                                    ProgressBar1.Value = sw.ElapsedMilliseconds;
                                 }
 
                             });
@@ -231,114 +289,78 @@ namespace EncryptEngine
                                 if (BackEnd.Cryptor.Execution == true)
                                 {
 
-                                    ProgressBar1.Maximum = BackEnd.Cryptor.HalfTime * 100;
-                                    ProgressBar1.Value = sw.ElapsedMilliseconds;
+                                    ProgressBar1.Maximum = BackEnd.Cryptor.HalfTime;
+                                    ProgressBar1.Value = sw.ElapsedMilliseconds*8000;
                                 }
                                 else if (BackEnd.Cryptor.Execution == false)
                                 {
 
-                                    ProgressBar1.Value = BackEnd.Cryptor.HalfTime * 100;
+                                    ProgressBar1.Value = BackEnd.Cryptor.HalfTime;
                                     btnCipher.IsEnabled = true;
                                     btnDecipher.IsEnabled = true;
                                     btnSelectFolder.IsEnabled = true;
-                                    btnStop.IsEnabled = false;
+                                    btnStopnPlay.IsEnabled = false;
                                     btnCancel.IsEnabled = false;
-                                    btnContinue.IsEnabled = false;
+
                                     cicle = false;
                                     sw.Stop();
+                                  
+                                    
+
                                 }
 
                             }
                              );
 
                         }
-                    
                 }
-                
-                
-
-
-
-
-
             }
         }
 
-        private void btnStop_Click(object sender, RoutedEventArgs e)
-        {
-            if (encipher == true)
-            {
-                ProgressBaras1.Suspend();
+  
 
-                EncriptionThread1.Suspend();
-                btnStop.IsEnabled = false;
-                btnCancel.IsEnabled = false;
-                btnContinue.IsEnabled = true;
-            }
-            else
-            {
-                ProgressBaras2.Suspend();
-
-                DecriptionThread2.Suspend();
-                btnStop.IsEnabled = false;
-                btnCancel.IsEnabled = false;
-                btnContinue.IsEnabled = true;
-            }
-            System.Windows.MessageBox.Show("Stopped");
-        }
-
-        private void btnContinue_Click(object sender, RoutedEventArgs e)
-        {
-            if (encipher == true)
-            {
-                ProgressBaras1.Resume();
-                EncriptionThread1.Resume();
-                btnStop.IsEnabled = true;
-                btnCancel.IsEnabled = true;
-            }
-            else
-            {
-
-                ProgressBaras2.Resume();
-                DecriptionThread2.Resume();
-                btnStop.IsEnabled = true;
-                btnCancel.IsEnabled = true;
-            }
-            System.Windows.MessageBox.Show("Resumed");
-        }
+    
 
         private void btnCancel_Click(object sender, RoutedEventArgs e)
         {
-            if (encipher == true)
+            btnCancel.IsEnabled = false;
+            btnDecipher.IsEnabled = true;
+            btnCipher.IsEnabled = true;
+            btnStopnPlay.IsEnabled = false;
+            btnSelectFolder.IsEnabled = true;
+            cancellationTokenSource.Cancel();
+            Thread th = new Thread(BackEnd.Cryptor.Cancel);
+            th.Start();
+            System.Windows.MessageBox.Show("Cancelled");
+            
+        }
+        public bool IsPausedMRE()
+        {
+            if(Paused==true)
             {
-                ProgressBaras1.Abort();
-                EncriptionThread1.Abort();
-                btnStop.IsEnabled = false;
-                btnCancel.IsEnabled = false;
-                btnContinue.IsEnabled = false;
-                ProgressBar1.Value = 0;
-                BackEnd.Cryptor.HalfTime = 0;
-                BackEnd.Cryptor.ThirdOfTime = 0;
-                ProgressBar1.Maximum = 100;
-                btnCipher.IsEnabled = true;
-                btnDecipher.IsEnabled = true;
+                return true;
             }
             else
             {
-
-                ProgressBaras2.Abort();
-                DecriptionThread2.Abort();
-                btnStop.IsEnabled = false;
-                btnCancel.IsEnabled = false;
-                btnContinue.IsEnabled = false;
-                ProgressBar1.Value = 0;
-                BackEnd.Cryptor.HalfTime = 0;
-                BackEnd.Cryptor.ThirdOfTime = 0;
-                ProgressBar1.Maximum = 100;
-                btnCipher.IsEnabled = true;
-                btnDecipher.IsEnabled = true;
+                return false;
             }
-            System.Windows.MessageBox.Show("Cancelled");
+
+
+        }
+
+        private void btnStopnPlay_Click(object sender, RoutedEventArgs e)
+        {
+            if(Paused==false)
+            {
+                Paused = true;
+                System.Windows.MessageBox.Show("Sustabdyta");
+            }
+           else if(Paused==true)
+            {
+                Paused = false;
+                System.Windows.MessageBox.Show("Pratesta");
+               
+            }
         }
     }
 }

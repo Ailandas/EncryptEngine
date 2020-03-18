@@ -5,163 +5,292 @@ using System.IO;
 using System.IO.Compression;
 using System.Security.AccessControl;
 using System.Security.Cryptography;
-using System.Security.Principal;
+using System.Threading;
 
 namespace EncryptEngine.BackEnd
 {
     public static class Cryptor
     {
-        public static int ThirdOfTime = 0;
+        public static long ThirdOfTime = 0;
         public static bool Execution;
-        public static int HalfTime = 0;
+        public static long HalfTime = 0;
+        public static bool InProgress = false;
+        public static int FileCount = 0;
         public static void Encryption(string path,string key,string BackupPathName)
         {
             try
             {
-
-                //encypt backup
-                string destPath = @getDestinationPath();
-                bool subFolders = false;
-                DirectoryInfo DirectInfo = new DirectoryInfo(path);
-                foreach (var fi in DirectInfo.EnumerateFiles())
-                {
-                    string file = fi.FullName;
-                    string destination = @destPath + @"BackupEncrypted";
-                    if (Directory.Exists(destination))
+                
+                    //encypt backup
+                    string destPath = @getDestinationPath() + @"\BackEnd\";
+                    bool subFolders = false;
+                    DirectoryInfo DirectInfo = new DirectoryInfo(path);
+                    foreach (var fi in DirectInfo.EnumerateFiles())
                     {
-                        string FileDestination = @destPath + @"BackupEncrypted\\" + fi.Name;
-                        AES.EncryptFile(file, FileDestination, key);
+                        string file = fi.FullName;
+                        string destination = @destPath + @"BackupEncrypted";
+                        if (Directory.Exists(destination))
+                        {
+
+                            string FileDestination = @destPath + @"BackupEncrypted\" + fi.Name;
+                        
+                            AES.EncryptFile(file, FileDestination, key);
+                        
+                        }
+                        else
+                        {
+                            Directory.CreateDirectory(destination);
+
+                            DirectorySecurity ds = Directory.GetAccessControl(destination);
+                            ds.AddAccessRule(new FileSystemAccessRule("Everyone", FileSystemRights.FullControl, AccessControlType.Allow));
+                            Directory.SetAccessControl(destination, ds);
+
+                            string FileDestination = @destPath + @"BackupEncrypted\\" + fi.Name;
+                        
+                            AES.EncryptFile(file, FileDestination, key);
+                        
+
+                        }
+
 
                     }
-                    else
+                    foreach (var fi in DirectInfo.EnumerateDirectories())
                     {
-                        Directory.CreateDirectory(destination);
-                        string FileDestination = @destPath + @"BackupEncrypted\\" + fi.Name;
-                        AES.EncryptFile(file, FileDestination, key);
+                        subFolders = true;
                     }
-                    
+                    if (subFolders == true)
+                    {
 
-                }
-                foreach (var fi in DirectInfo.EnumerateDirectories())
-                {
-                    subFolders = true;
-                }
-                if(subFolders==true)
-                {
-                   
-                        string ZipFilePath = destPath + BackupPathName + "\\zipas.zip";
-                        string ZipFileEncripted = destPath + "BackupEncrypted\\zipas.zip";
+                        string zipName = getZipFileName(destPath + BackupPathName);
+                        string ZipFilePath = destPath + BackupPathName + "\\" + zipName;
+                        string ZipFileEncripted = destPath + "BackupEncrypted\\" + zipName;
+                    InProgress = true;
                         AES.EncryptFile(ZipFilePath, ZipFileEncripted, key);
+                    InProgress = false;
+
+
+
+                    }
                     
 
-                }
-                var enviroment = System.Environment.CurrentDirectory;
-                string projectDirectory = Directory.GetParent(enviroment).Parent.FullName;
-               
-                string BackUpEncripted = @projectDirectory+"\\BackEnd\\BackupEncrypted";
-                if(Directory.Exists(BackUpEncripted))
-                {
-                    Console.WriteLine(path);
-                    Replace(path, BackUpEncripted);
-                    MultiHashCalculator(path);
-                }
-
-            }
-            catch (Exception exc)
-            {
-                Console.WriteLine(exc.Message+" Main");
-            }
-        }
-        public static void Encrypt(string path,string key,string BackupPathName)
-        {
-            Stopwatch sw = new Stopwatch();
-            sw.Start();
-            Execution = true;
-            CreateBackup(path, BackupPathName);
-            Encryption(path,key,BackupPathName);
-            string Backup = getDestinationPath();
-            Backup = Backup + "//"+ BackupPathName;
-            DeleteDirectory(Backup);
-
-            
-            
-            Execution = false;
-            sw.Stop();
-            Console.WriteLine("Finish" + sw.ElapsedMilliseconds) ;
-        }
-        public static void Decrypt(string path,string key)
-        {
-            Stopwatch sw = new Stopwatch();
-            sw.Start();
-            Execution = true;
-            Decryption(path,key);
-            Execution = false;
-            sw.Stop();
-            Console.WriteLine("Finish" + sw.ElapsedMilliseconds);
-        }
-        public static void Decryption(string path,string key)
-        {
-            try
-            {
-              
-                string BackUpForDecription = getDestinationPath();
-                BackUpForDecription = BackUpForDecription + "\\BackupForDecription";
-                Directory.CreateDirectory(BackUpForDecription);
-                DirectoryInfo DirectInfo = new DirectoryInfo(path) ;
-
-                List<string> HashesFromDB = Database.GetHashes();
-
-                List<string> HashList = new List<string>();
-                List<string> NameList = new List<string>();
-
-
-                HashList=SplitStringList(HashesFromDB, ',', true);
-                NameList=SplitStringList(HashesFromDB, ',', false);
-                foreach (var fi in DirectInfo.EnumerateFiles())
-                {
-
-                    if (fi.Name.Contains(".zip"))
-                    {
-                        string SingleHash = HashCalculator(fi.FullName);
-                        if (HashList.Contains(SingleHash) && NameList.Contains(fi.Name))
-                        {
-                            string ZipFilePath = BackUpForDecription + "\\zipas.zip";
-                            AES.DecryptFile(@fi.FullName, BackUpForDecription + "\\" + fi.Name, key);
-                            ZipFile.ExtractToDirectory(ZipFilePath, BackUpForDecription + "\\");
-                            File.Delete(ZipFilePath);
-                        }
-                        else
-                        {
-                            File.Copy(fi.FullName,BackUpForDecription+"\\"+fi.Name);
-                        }
-
-
-                    }
-                    else
-                    {
-                        string SingleHash = HashCalculator(fi.FullName);
-                        if (HashList.Contains(SingleHash) && NameList.Contains(fi.Name))
-                        {
-                            AES.DecryptFile(fi.FullName, BackUpForDecription + "\\" + fi.Name, key);
-                        }
-                        else
-                        {
-                            File.Copy(fi.FullName, BackUpForDecription + "\\" + fi.Name);
-                        }
-
-                    }
-
-                }
-                Replace(path, BackUpForDecription);
-              
-                
-                
                 
             }
             catch (Exception exc)
             {
-                Console.WriteLine(exc.Message);
+                Console.WriteLine(exc.Message + " Main");
+
             }
+
+        }
+        public static void Encrypt(string path,string key,string BackupPathName, CancellationToken cancelToken, Delegate DelegatePause)
+        {
+            
+                try
+                {
+
+                if (cancelToken.IsCancellationRequested == false)
+                {
+                    bool wait = Convert.ToBoolean(DelegatePause.DynamicInvoke());
+                    while(wait==true)
+                    {
+                        wait = Convert.ToBoolean(DelegatePause.DynamicInvoke());
+                    }
+                    InProgress = true;
+                    FileDirectoryOperations.CreateBackup(path, BackupPathName);
+                    InProgress = false;
+                }
+                if (cancelToken.IsCancellationRequested == false)
+                {
+                    bool wait = Convert.ToBoolean(DelegatePause.DynamicInvoke());
+                    while (wait == true)
+                    {
+                        wait = Convert.ToBoolean(DelegatePause.DynamicInvoke());
+                    }
+                    InProgress = true;
+                    Encryption(path, key, BackupPathName);
+                    InProgress = false;
+                }
+                string ExtraSymbolOnPath = "";
+                if (cancelToken.IsCancellationRequested == false)
+                {
+                    bool wait = Convert.ToBoolean(DelegatePause.DynamicInvoke());
+                    while (wait == true)
+                    {
+                        wait = Convert.ToBoolean(DelegatePause.DynamicInvoke());
+                    }
+                    InProgress = true;
+                    string BackUpEncripted = getDestinationPath() + @"\BackEnd\BackupEncrypted";
+                   ExtraSymbolOnPath= FileDirectoryOperations.Replace(path, BackUpEncripted);
+                    InProgress = false;
+                }
+                if(cancelToken.IsCancellationRequested==false)
+                {
+                    bool wait = Convert.ToBoolean(DelegatePause.DynamicInvoke());
+                    while (wait == true)
+                    {
+                        wait = Convert.ToBoolean(DelegatePause.DynamicInvoke());
+                    }
+                    InProgress = true;
+                    FileDirectoryOperations.MultiHashCalculator(path+ExtraSymbolOnPath+@"\");
+                    InProgress = false;
+                }
+                if (cancelToken.IsCancellationRequested == false)
+                {
+                    bool wait = Convert.ToBoolean(DelegatePause.DynamicInvoke());
+                    while (wait == true)
+                    {
+                        wait = Convert.ToBoolean(DelegatePause.DynamicInvoke());
+                    }
+                    InProgress = true;
+                    string Backup = getDestinationPath() + @"\BackEnd\" + BackupPathName;
+                    FileDirectoryOperations.DeleteDirectory(Backup);
+                    Console.WriteLine("Finish");
+                    InProgress = false;
+                }
+
+
+            }
+                catch (Exception exc)
+                {
+                    Console.WriteLine(exc.Message);
+                   
+                }
+            
+            
+        }
+        public static void Decrypt(string path,string key, CancellationToken cancelToken, Delegate DelegatePause)
+        {
+
+                try
+                {
+                    if(cancelToken.IsCancellationRequested==false)
+                    {
+                        bool wait=Convert.ToBoolean(DelegatePause.DynamicInvoke());
+                        while (wait == true)
+                        {
+                            wait = Convert.ToBoolean(DelegatePause.DynamicInvoke());
+                        }
+                        InProgress = true;
+                        Decryption(path, key,DelegatePause);
+                        InProgress = false;
+                    }
+
+                    if (cancelToken.IsCancellationRequested == false)
+                    {
+                        bool wait = Convert.ToBoolean(DelegatePause.DynamicInvoke());
+                        while (wait == true)
+                        {
+                            wait = Convert.ToBoolean(DelegatePause.DynamicInvoke());
+                        }
+                        InProgress = true;
+                        FileDirectoryOperations.DeleteDirectory(path);
+                        InProgress = false;
+                    }
+
+                    if (cancelToken.IsCancellationRequested == false)
+                    {
+                        bool wait = Convert.ToBoolean(DelegatePause.DynamicInvoke());
+                        while (wait == true)
+                        {
+                            wait = Convert.ToBoolean(DelegatePause.DynamicInvoke());
+                        }
+                        InProgress = true;
+                        string BackUpForDecription = getDestinationPath() + @"\BackEnd\BackupForDecription\";
+                        FileDirectoryOperations.Replace(path, BackUpForDecription);
+                        Console.WriteLine("Finish");
+                        InProgress = false;
+                    }
+                }
+                catch (Exception exc)
+                {
+                    Console.WriteLine(exc.Message);
+                }
+
+        }
+        public static void Decryption(string path,string key, Delegate DelegatePause)
+        {
+           
+                try
+                {
+
+                    string projectDirectory = getDestinationPath();
+                    string BackUpForDecription = projectDirectory + @"\BackEnd\BackupForDecription";
+                    Directory.CreateDirectory(BackUpForDecription);
+                    DirectoryInfo DirectInfo = new DirectoryInfo(path);
+
+                    List<string> HashesFromDB = Database.GetHashes();
+
+                    List<string> HashList = new List<string>();
+                    List<string> NameList = new List<string>();
+
+
+                    HashList = SplitStringList(HashesFromDB, ',', true);
+                    NameList = SplitStringList(HashesFromDB, ',', false);
+                    foreach (var fi in DirectInfo.EnumerateFiles())
+                    {
+                        bool wait = Convert.ToBoolean(DelegatePause.DynamicInvoke());
+                        if (wait == true)
+                        {
+                            while (wait == true)
+                            {
+                                wait = Convert.ToBoolean(DelegatePause.DynamicInvoke());
+                            }
+                        }
+                        else
+                        {
+
+                            if (fi.Name.Contains(".zip") && fi.Name.Length==18+4)
+                            {
+
+                                string SingleHash = FileDirectoryOperations.HashCalculator(fi.FullName);
+                                if (HashList.Contains(SingleHash) && NameList.Contains(fi.Name))
+                                {
+
+                                    string ZipFilePath = BackUpForDecription + "\\" + fi.Name;
+                                    AES.DecryptFile(@fi.FullName, BackUpForDecription + "\\" + fi.Name, key);
+                                    ZipFile.ExtractToDirectory(ZipFilePath, BackUpForDecription + "\\");
+                                    File.Delete(ZipFilePath);
+                                }
+                                else
+                                {
+                                    File.Copy(fi.FullName, BackUpForDecription + "\\" + fi.Name);
+                                }
+
+
+                            }
+                            else
+                            {
+                                string SingleHash = FileDirectoryOperations.HashCalculator(fi.FullName);
+                                if (HashList.Contains(SingleHash) && NameList.Contains(fi.Name))
+                                {
+
+                                    string outputFile = BackUpForDecription + "\\" + fi.Name;
+                                    AES.DecryptFile(fi.FullName, outputFile, key);
+
+
+                                }
+                                else
+                                {
+                                    File.Copy(fi.FullName, BackUpForDecription + "\\" + fi.Name);
+                                }
+
+                            }
+
+                        }
+                    }
+                    
+                    
+
+                    
+
+
+                }
+                catch (Exception exc)
+                {
+                    Console.WriteLine(exc.Message);
+                    
+                }
+            
         }
         public static List<string> SplitStringList(List<string> splitable,char c,bool Hash)
         {
@@ -191,177 +320,104 @@ namespace EncryptEngine.BackEnd
         {
             var enviroment = System.Environment.CurrentDirectory;
             string projectDirectory = Directory.GetParent(enviroment).Parent.FullName;
-            projectDirectory = projectDirectory + "//BackEnd//" ;
+            
             return projectDirectory;
         }
-        private static void ZipFoldersCollection(string ZipFilePath)
-        {
+       
+       
 
-            List<string> DeletableItems = new List<string>();
-            try
-            {
-                
-                    using (ZipArchive archive = ZipFile.OpenRead(ZipFilePath))
-                    {
-                    
-                        foreach (var s in archive.Entries)
-                        {
-
-                            if (s.IsFolder())
-                            {
-
-                            }
-                            else
-                            {
-                                DeletableItems.Add(s.FullName);
-                           
-                            }
-
-                        }
-                    }
-                    DeleteItems(DeletableItems, ZipFilePath);
-   
-            }
-            catch (Exception exc)
-            {
-                Console.WriteLine(exc.Message+" ZiPCollection");
-            }
-           
-            
-        }
-        private static bool IsFolder(this ZipArchiveEntry entry)
-        {
-            return entry.FullName.Contains("/");
-        }
-        private static void DeleteItems(List<string> items,string ZipFilePath)
-        {
-            using (Stream stream = File.Open(ZipFilePath, FileMode.Open))
-            {
-                using (ZipArchive archive = new ZipArchive(stream, ZipArchiveMode.Update, false))
-                {
-                    foreach(var z in items)
-                    {
-                        ZipArchiveEntry zp = archive.GetEntry(z);
-                        zp.Delete();
-                    }
-                        
-                }
-            }
-            
-        }
-   
-        public static void CopyAll(DirectoryInfo source, DirectoryInfo target)
-        {
-            Directory.CreateDirectory(target.FullName);
-
-            // Copy each file into the new directory.
-            foreach (FileInfo fi in source.GetFiles())
-            {
-                
-                fi.CopyTo(Path.Combine(target.FullName, fi.Name), true);
-            }
-
-            // Copy each subdirectory using recursion.
-            foreach (DirectoryInfo diSourceSubDir in source.GetDirectories())
-            {
-                DirectoryInfo nextTargetSubDir =
-                    target.CreateSubdirectory(diSourceSubDir.Name);
-                CopyAll(diSourceSubDir, nextTargetSubDir);
-            }
-        }
-        public static void CreateBackup(string path,string BackupPathName)
-        {
-            //copy to backup
-            string target = getDestinationPath();
-            target = target + "\\"+ BackupPathName;
-            var diSource = new DirectoryInfo(path);
-            var diTarget = new DirectoryInfo(target);
-            CopyAll(diSource, diTarget);
-            ZipFile.CreateFromDirectory(path, target+"\\zipas.zip");
-            string ZipFilePath = target + "\\zipas.zip";
-            ZipFoldersCollection(ZipFilePath);
-            
-            //copy to backup
-        }
-        public static void Replace(string ReplacableDirectoryPath,string CryptedBackup)
-        {
-            try
-            {
-                Directory.Delete(ReplacableDirectoryPath, true);
-                Directory.Move(CryptedBackup, ReplacableDirectoryPath);
-
-            }
-            catch(Exception exc)
-            {
-                Console.WriteLine("Replacable: "+ ReplacableDirectoryPath);
-                Console.WriteLine("Crypted backup: " + CryptedBackup);
-                Console.WriteLine(exc.Message + "message");
-            }
-        }
-        private static void MultiHashCalculator(string path)
-        {
-            List<string> Names = new List<string>();
-            List<string> Hashes = new List<string>();
-            DirectoryInfo dInfo = new DirectoryInfo(path);
-            foreach(var fi in dInfo.EnumerateFiles())
-            {
-                using (var md5 = MD5.Create())
-                {
-                    using (var stream = File.OpenRead(fi.FullName))
-                    {
-                        Names.Add(fi.Name);
-                        var hash = md5.ComputeHash(stream);
-                        Hashes.Add(BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant());
-                    }
-                }
-            }
-            Database.SendHashes(Names, Hashes);
-        }
-        private static string HashCalculator(string path)
-        {
-            string hashas;
-                using (var md5 = MD5.Create())
-                {
-                    using (var stream = File.OpenRead(path))
-                    {
-                        
-                        var hash = md5.ComputeHash(stream);
-                        hashas = BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
-                    }
-                }
-
-            return hashas;
-        }
-        public static void DeleteDirectory(string input)
-        {
-            Directory.Delete(input, true);
-        }
-        public static void TimeMeasurment(string path,string BackupPathName)
+        public static void TimeMeasurment(string path)
         {
             Stopwatch sw = new Stopwatch();
             try
             {
                 
                 sw.Start();
-                DirectoryInfo source = new DirectoryInfo(path);
-                string destination = getDestinationPath() + "\\" + BackupPathName;
-                DirectoryInfo dest = new DirectoryInfo(destination);
-                CopyAll(source, dest);
-                Directory.Delete(destination, true);
+
+                long size = 0;
+                int count = 0;
+                DirectoryInfo dinfo = new DirectoryInfo(path);
+                foreach (var fi in dinfo.EnumerateFiles())
+                {
+
+                    long length = new System.IO.FileInfo(fi.FullName).Length;
+                    size = size + length;
+                    count++;
+                }
+
                 sw.Stop();
-                ThirdOfTime = Convert.ToInt32(sw.ElapsedMilliseconds);
-                HalfTime = Convert.ToInt32(sw.ElapsedMilliseconds);
+                ThirdOfTime = size;
+                HalfTime = size;
+                FileCount = count;
                 Console.WriteLine("half:"+ HalfTime);
+                Console.WriteLine("third:" + ThirdOfTime);
+
             }
             catch(Exception exc)
             {
                 Console.WriteLine(exc.Message);
+                
             }
 
         }
         public static void Cancel()
         {
+
             
+            
+
+                string path = getDestinationPath() + @"\BackEnd\";
+                string backup = path + @"BackUp\";
+                string timeMeassurment1 = path + @"TempBackupas\";
+                string timeMeassurment2 = path + @"TempBackup\";
+                string BackupEncrypted = path + @"BackupEncrypted\";
+                string BackupForEncriptio = path + @"BackupForDecription\";
+            while (true)
+            {
+                if (InProgress == false)
+                {
+                    if (Directory.Exists(backup))
+                    {
+                        Directory.Delete(backup, true);
+                    }
+                    if (Directory.Exists(timeMeassurment1))
+                    {
+                        Directory.Delete(timeMeassurment1, true);
+                    }
+                    if (Directory.Exists(timeMeassurment2))
+                    {
+                        Directory.Delete(timeMeassurment2, true);
+                    }
+                    if (Directory.Exists(BackupEncrypted))
+                    {
+                        Directory.Delete(BackupEncrypted, true);
+                    }
+                    if (Directory.Exists(BackupForEncriptio))
+                    {
+
+                        Directory.Delete(BackupForEncriptio, true);
+                    }
+                    break;
+                }
+                
+            }
+           
         }
+       
+        public static string getZipFileName(string path)
+        {
+            string zipname = "";
+            DirectoryInfo dinfo = new DirectoryInfo(path);
+            foreach(var fi in dinfo.EnumerateFiles())
+            {
+                if(fi.Name.Contains(".zip"))
+                {
+                    zipname = fi.Name;
+                    break;
+                }
+            }
+            return zipname;
+        }
+
     }
 }

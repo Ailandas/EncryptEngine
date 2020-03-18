@@ -11,13 +11,12 @@
         <ProgressBar x:Name="ProgressBar1" HorizontalAlignment="Left" Height="30" Margin="55,325,0,0" VerticalAlignment="Top" Width="670"/>
         <Button x:Name="btnDecipher" Content="Atšifruoti" HorizontalAlignment="Left" Margin="511,128,0,0" VerticalAlignment="Top" Width="106" Click="btnDecipher_Click" Height="32" FontFamily="Times New Roman"/>
         <TextBox x:Name="txtKey" HorizontalAlignment="Left" Height="74" Margin="115,86,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="374" FontFamily="Times New Roman" FontWeight="Bold" VerticalContentAlignment="Center" TextChanged="txtKey_TextChanged" FontSize="16"/>
-        <TextBox x:Name="txtPath" HorizontalAlignment="Left" Height="48" Margin="115,241,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="374" FontFamily="Times New Roman" FontWeight="Bold" IsEnabled="False" FontSize="16" VerticalContentAlignment="Center" Text="D:\Jobs\2019-2020\VisualStudio 4 semestras\Stuff to encript"/>
+        <TextBox x:Name="txtPath" HorizontalAlignment="Left" Height="48" Margin="115,241,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="374" FontFamily="Times New Roman" FontWeight="Bold" FontSize="16" VerticalContentAlignment="Center" Text="D:\Jobs\2019-2020\VisualStudio 4 semestras\Stuff to encript"/>
         <Label Content="Raktas:" HorizontalAlignment="Left" Margin="115,44,0,0" VerticalAlignment="Top" Width="163" FontFamily="Times New Roman" IsEnabled="False" Height="39"/>
         <Label x:Name="lblSymbolCount" Content="" HorizontalAlignment="Left" Margin="115,168,0,0" VerticalAlignment="Top" Width="163" FontFamily="Times New Roman" FontWeight="Bold" IsEnabled="False" Height="40"/>
         <Button x:Name="btnSelectFolder" Content="---" HorizontalAlignment="Left" Margin="511,241,0,0" VerticalAlignment="Top" Width="106" Height="48" FontFamily="Times New Roman" Click="btnSelectFolder_Click" FontSize="24" FontWeight="Bold"/>
-        <Button x:Name="btnStop" Content="Pauze" HorizontalAlignment="Left" Margin="622,86,0,0" VerticalAlignment="Top" Width="63" Height="33" FontFamily="Times New Roman" RenderTransformOrigin="1.311,0.576" Click="btnStop_Click" IsEnabled="False"/>
-        <Button x:Name="btnContinue" Content="Testi" HorizontalAlignment="Left" Margin="622,128,0,0" VerticalAlignment="Top" Width="63" Height="32" FontFamily="Times New Roman" RenderTransformOrigin="1.311,0.576" Click="btnContinue_Click" IsEnabled="False"/>
-        <Button x:Name="btnCancel" Content="Atsaukti" HorizontalAlignment="Left" Margin="690,86,0,0" VerticalAlignment="Top" Width="80" Height="33" FontFamily="Times New Roman" RenderTransformOrigin="1.311,0.576" Click="btnCancel_Click" IsEnabled="False"/>
+        <Button x:Name="btnStopnPlay" Content="Pauze/Testi" HorizontalAlignment="Left" Margin="622,86,0,0" VerticalAlignment="Top" Width="103" Height="33" FontFamily="Times New Roman" RenderTransformOrigin="1.311,0.576" IsEnabled="False" Click="btnStopnPlay_Click"/>
+        <Button x:Name="btnCancel" Content="Atsaukti" HorizontalAlignment="Left" Margin="622,124,0,0" VerticalAlignment="Top" Width="103" Height="36" FontFamily="Times New Roman" RenderTransformOrigin="1.311,0.576" Click="btnCancel_Click" IsEnabled="False"/>
 
     </Grid>
 </Window>
