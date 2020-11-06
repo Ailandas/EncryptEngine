@@ -63,7 +63,7 @@ namespace EncryptEngine
                         cancellationTokenSource = new CancellationTokenSource();
 
 
-                        IsPaused DelegatePause = this.IsPausedMRE;
+                        
 
                         ProgressBaras1 = new Thread(delegate ()
                         {
